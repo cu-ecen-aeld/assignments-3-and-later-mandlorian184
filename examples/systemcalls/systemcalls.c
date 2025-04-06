@@ -9,15 +9,11 @@
 */
 bool do_system(const char *cmd)
 {
-
-/*
- * TODO  add your code here
- *  Call the system() function with the command set in the cmd
- *   and return a boolean true if the system() call completed with success
- *   or false() if it returned a failure
-*/
-
-    return true;
+    int res = system(cmd);
+    if(res == -1)
+        return false ;
+    else 
+        return (WIFEXITED(res) && WEXITSTATUS(res) == 0);
 }
 
 /**
@@ -48,16 +44,36 @@ bool do_exec(int count, ...)
     // this line is to avoid a compile warning before your implementation is complete
     // and may be removed
     command[count] = command[count];
-
-/*
- * TODO:
- *   Execute a system command by calling fork, execv(),
- *   and wait instead of system (see LSP page 161).
- *   Use the command[0] as the full path to the command to execute
- *   (first argument to execv), and use the remaining arguments
- *   as second argument to the execv() command.
- *
-*/
+    if((command[0][0]!='/') | ((count > 2) & (command[count-1][0]!='/')))
+    {
+        printf("comand count -1 is and 0 char is %s, %c\n",command[count-1],command[count-1][0]);
+        return false;
+    }
+    fflush(stdout);
+    pid_t pid = fork(); // Create a new process
+    if (pid == -1) {
+        // Fork failed
+        perror("Fork failed");
+        return false;
+    } else if (pid == 0) {
+        // Child process
+        const char* path = command[0];
+        execv(path, command); // Execute the command  ---------> ?
+        // If execv returns, it must have failed
+        perror("execv failed");
+        return false;
+    } else {
+        // Parent process
+        int status;
+        wait(&status); // Wait for the child process to finish
+        // Check if the child process terminated normally and returned 0
+        if (WIFEXITED(status)) {
+            printf("Command executed with exit status: %d\n", WEXITSTATUS(status));
+        } else {
+            printf("Command did not terminate normally.\n");
+            return false;
+        }
+    }
 
     va_end(args);
 
@@ -83,15 +99,40 @@ bool do_exec_redirect(const char *outputfile, int count, ...)
     // this line is to avoid a compile warning before your implementation is complete
     // and may be removed
     command[count] = command[count];
+    pid_t childpid;
+    int status;
+    int fd = open(outputfile, O_WRONLY|O_TRUNC|O_CREAT, 0644);
+    if (fd < 0) {
+     perror("open"); 
+     return false;    
+    }
+    fflush(stdout);
+    switch (childpid = fork())
+    { 
+    case -1:
+        perror("fork"); 
+        return false;    
+    case 0:
+        if (dup2(fd, 1) < 0) { 
+            perror("dup2"); 
+            return false;    
+        }
+        close(fd);
+        execv(command[0], command); 
+        perror("execvp"); 
+        return false;
+    default:
+        close(fd);
+        /* do whatever the parent wants to do. */
+    }
 
-
-/*
- * TODO
- *   Call execv, but first using https://stackoverflow.com/a/13784315/1446624 as a refernce,
- *   redirect standard out to a file specified by outputfile.
- *   The rest of the behaviour is same as do_exec()
- *
-*/
+    if (waitpid (childpid, &status, 0) == -1)
+    {
+        return -1;
+    }
+    else if (WIFEXITED (status)){
+        return WEXITSTATUS (status);
+    }
 
     va_end(args);
 
