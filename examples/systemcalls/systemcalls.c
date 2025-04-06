@@ -10,10 +10,12 @@
 bool do_system(const char *cmd)
 {
     int res = system(cmd);
+    printf("do_system() called with CMD<%s> and return <%d>\n",cmd,res);
     if(res == -1)
         return false ;
     else 
         return (WIFEXITED(res) && WEXITSTATUS(res) == 0);
+    
 }
 
 /**
@@ -76,7 +78,7 @@ bool do_exec(int count, ...)
     }
 
     va_end(args);
-
+    printf("do_exec()returned successfully \n");
     return true;
 }
 
@@ -135,6 +137,6 @@ bool do_exec_redirect(const char *outputfile, int count, ...)
     }
 
     va_end(args);
-
+    printf("do_exec()returned successfully \n");
     return true;
 }
